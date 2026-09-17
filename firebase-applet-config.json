@@ -1,12 +1,9 @@
 {
-  "projectId": "plasma-tribute-kf6jr",
-  "appId": "1:159405978608:web:d377bb91b6b8deb9dc6335",
-  "apiKey": "AIzaSyAll7c8qr6tnPwEZjQ3JDUCS5IUrCX1wGo",
-  "authDomain": "plasma-tribute-kf6jr.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-remixremixremixr-d4168cd7-3ed5-4647-b1e1-d2735b707c02",
-  "storageBucket": "plasma-tribute-kf6jr.firebasestorage.app",
-  "messagingSenderId": "159405978608",
-  "measurementId": "",
-  "oAuthClientId": "159405978608-42ralhnegvnac9ijtc01aipl5717pro8.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "projectId": "banking-tayari-nepal",
+  "appId": "1:389241557756:web:740ccb16e263838ea9fd79",
+  "apiKey": "AIzaSyC6bANa5Cxw0v55fqs_bdV9vUcN_dVlqW4",
+  "authDomain": "banking-tayari-nepal.firebaseapp.com",
+  "storageBucket": "banking-tayari-nepal.firebasestorage.app",
+  "messagingSenderId": "389241557756",
+  "measurementId": "G-3YT3FCML6L"
 }

@@ -26,5 +26,8 @@ service cloud.firestore {
     match /exam_scores/{scoreId} {
       allow read, write: if true;
     }
+    match /exam_submissions/{submissionId} {
+      allow read, write: if true;
+    }
   }
 }

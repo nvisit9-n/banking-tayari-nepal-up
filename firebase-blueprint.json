@@ -74,6 +74,24 @@
         "accuracy": { "type": "number" },
         "timestamp": { "type": "string" }
       }
+    },
+    "exam_submissions": {
+      "title": "ExamSubmission",
+      "description": "Live student exam submission records for admin tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "quizId": { "type": "string" },
+        "quizTitle": { "type": "string" },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "timestamp": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -96,6 +114,10 @@
     "/exam_scores/{scoreId}": {
       "schema": "exam_scores",
       "description": "Completed exam score records"
+    },
+    "/exam_submissions/{submissionId}": {
+      "schema": "exam_submissions",
+      "description": "Live exam submissions collection for admin monitoring"
     }
   }
 }
