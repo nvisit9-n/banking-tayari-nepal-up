@@ -1,6 +1,4 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
-  getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
@@ -9,36 +7,16 @@ import {
   signOut,
   Auth
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, Firestore } from 'firebase/firestore';
+import { doc, setDoc, Firestore } from 'firebase/firestore';
 import { UserProfile } from '../types';
-import firebaseConfigData from '../../firebase-applet-config.json';
-
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-
-try {
-  app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfigData);
-  auth = getAuth(app);
-  db = getFirestore(app, firebaseConfigData.firestoreDatabaseId || undefined);
-} catch (e) {
-  console.warn('Firebase init warning:', e);
-}
+import { app, auth, db } from '../firebase';
 
 export class FirebaseAuthService {
   static getAuthInstance(): Auth {
-    if (!auth) {
-      app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfigData);
-      auth = getAuth(app);
-    }
     return auth;
   }
 
   static getFirestoreInstance(): Firestore {
-    if (!db) {
-      app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfigData);
-      db = getFirestore(app, firebaseConfigData.firestoreDatabaseId || undefined);
-    }
     return db;
   }
 

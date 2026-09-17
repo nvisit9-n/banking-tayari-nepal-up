@@ -33,6 +33,38 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+// Firebase Auth Hosting Proxy (mirrors vercel.json /__/auth/* rewrites)
+app.all("/__/auth/*", async (req, res) => {
+  try {
+    const targetUrl = `https://plasma-tribute-kf6jr.firebaseapp.com${req.originalUrl}`;
+    const headers: Record<string, string> = {};
+    for (const [key, val] of Object.entries(req.headers)) {
+      if (typeof val === "string" && key.toLowerCase() !== "host") {
+        headers[key] = val;
+      }
+    }
+    headers["host"] = "plasma-tribute-kf6jr.firebaseapp.com";
+
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body: req.method !== "GET" && req.method !== "HEAD" && req.body 
+        ? (typeof req.body === "string" ? req.body : JSON.stringify(req.body)) 
+        : undefined,
+    });
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      res.setHeader(key, value);
+    });
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (proxyErr) {
+    console.error("Firebase Auth proxy error:", proxyErr);
+    res.redirect(`https://plasma-tribute-kf6jr.firebaseapp.com${req.originalUrl}`);
+  }
+});
+
 // Google OAuth Popup Callback Handler
 app.get(["/auth/google/callback", "/auth/google/callback/", "/auth/callback", "/auth/callback/"], (_req, res) => {
   res.send(`
