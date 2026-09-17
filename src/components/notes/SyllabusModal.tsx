@@ -11,6 +11,8 @@ import {
   Printer
 } from 'lucide-react';
 import { OfficialSyllabus } from '../../data/officialSyllabi';
+import { useApp } from '../../context/AppContext';
+import { ActivityTrackingService } from '../../services/activityTrackingService';
 
 interface SyllabusModalProps {
   syllabus: OfficialSyllabus;
@@ -18,8 +20,38 @@ interface SyllabusModalProps {
 }
 
 export const SyllabusModal: React.FC<SyllabusModalProps> = ({ syllabus, onClose }) => {
+  const { requireAuth, user } = useApp();
+
+  React.useEffect(() => {
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logActivity({
+        user,
+        activityType: 'syllabus_view',
+        targetId: syllabus.id,
+        targetTitle: syllabus.titleNepali,
+        details: `पाठ्यक्रम अवलोकन: ${syllabus.institutionNepali} - ${syllabus.post}`,
+        metadata: { institution: syllabus.institution, level: syllabus.level }
+      }).catch(() => {});
+    }
+  }, [syllabus.id, user?.id]);
 
   const handleDownload = () => {
+    if (!requireAuth(() => handleDownload(), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
+
+    // Persist authenticated download event to Firestore & Admin tracking
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logDownload({
+        user,
+        fileId: syllabus.id,
+        fileName: syllabus.pdfFileName,
+        fileType: 'PDF',
+        resourceCategory: 'Syllabus',
+        fileSize: 'Official PDF'
+      }).catch(() => {});
+    }
+
     // Generate clean printable text/pdf payload
     const content = `${syllabus.institutionNepali.toUpperCase()}
 ${syllabus.titleNepali}

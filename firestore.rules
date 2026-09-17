@@ -17,5 +17,14 @@ service cloud.firestore {
     match /quiz_attempts/{attemptId} {
       allow read, write: if true;
     }
+    match /user_activities/{activityId} {
+      allow read, write: if true;
+    }
+    match /download_events/{downloadId} {
+      allow read, write: if true;
+    }
+    match /exam_scores/{scoreId} {
+      allow read, write: if true;
+    }
   }
 }

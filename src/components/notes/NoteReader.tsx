@@ -24,6 +24,7 @@ import { BareActReader } from './BareActReader';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
 import { safeCopyToClipboard } from '../../utils/safeHelpers';
 import { PaidContentLock } from '../premium/PaidContentLock';
+import { ActivityTrackingService } from '../../services/activityTrackingService';
 
 interface NoteReaderProps {
   note: StudyNote;
@@ -31,7 +32,7 @@ interface NoteReaderProps {
 }
 
 export const NoteReader: React.FC<NoteReaderProps> = ({ note, onClose }) => {
-  const { toggleBookmark, isBookmarked, startQuiz } = useApp();
+  const { toggleBookmark, isBookmarked, startQuiz, requireAuth, user } = useApp();
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [copiedShare, setCopiedShare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +46,23 @@ export const NoteReader: React.FC<NoteReaderProps> = ({ note, onClose }) => {
 
   const handleToggleBookmark = () => {
     toggleBookmark('note', note.id, note.title, note.subject);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!requireAuth(() => handleDownloadPdf(), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logDownload({
+        user,
+        fileId: note.id,
+        fileName: `${note.title.replace(/\s+/g, '_')}.pdf`,
+        fileType: 'PDF',
+        resourceCategory: 'StudyNote',
+        fileSize: 'Printable PDF'
+      }).catch(() => {});
+    }
+    window.print();
   };
 
   const handleShare = async () => {
@@ -142,7 +160,7 @@ export const NoteReader: React.FC<NoteReaderProps> = ({ note, onClose }) => {
 
           {/* PDF Download / Print Button */}
           <button
-            onClick={() => window.print()}
+            onClick={handleDownloadPdf}
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
             title="Download / Print Note as PDF"
           >

@@ -255,6 +255,50 @@ Format Style: ${format}`;
   }
 });
 
+// User Activity & Download & Exam Score Tracking APIs
+const userActivitiesList: any[] = [];
+const downloadEventsList: any[] = [];
+const examScoresList: any[] = [];
+
+app.post("/api/tracking/activity", (req, res) => {
+  const record = req.body;
+  if (record && record.userId) {
+    userActivitiesList.unshift(record);
+    if (userActivitiesList.length > 500) userActivitiesList.pop();
+  }
+  res.json({ success: true });
+});
+
+app.get("/api/tracking/activities", (_req, res) => {
+  res.json({ success: true, activities: userActivitiesList });
+});
+
+app.post("/api/tracking/download", (req, res) => {
+  const record = req.body;
+  if (record && record.userId) {
+    downloadEventsList.unshift(record);
+    if (downloadEventsList.length > 500) downloadEventsList.pop();
+  }
+  res.json({ success: true });
+});
+
+app.get("/api/tracking/downloads", (_req, res) => {
+  res.json({ success: true, downloads: downloadEventsList });
+});
+
+app.post("/api/tracking/exam-score", (req, res) => {
+  const record = req.body;
+  if (record && record.userId) {
+    examScoresList.unshift(record);
+    if (examScoresList.length > 500) examScoresList.pop();
+  }
+  res.json({ success: true });
+});
+
+app.get("/api/tracking/exam-scores", (_req, res) => {
+  res.json({ success: true, scores: examScoresList });
+});
+
 // Sangathit Sastha 50 Sets Bulk Database APIs
 const DATA_SETS_FILE = path.join(process.cwd(), "public", "data", "allFiftySets.json");
 

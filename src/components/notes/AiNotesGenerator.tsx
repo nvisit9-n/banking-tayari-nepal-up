@@ -19,6 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
 import { safeCopyToClipboard } from '../../utils/safeHelpers';
+import { ActivityTrackingService } from '../../services/activityTrackingService';
 
 interface PracticeQuestion {
   question: string;
@@ -103,7 +104,7 @@ const STANDARD_INITIAL_NOTES: GeneratedNotes = {
 };
 
 export const AiNotesGenerator: React.FC = () => {
-  const { addToast, user } = useApp();
+  const { addToast, user, requireAuth } = useApp();
   const [selectedTopic, setSelectedTopic] = useState<string>('नेपाल राष्ट्र बैंक ऐन, २०५८ (NRB Act 2058)');
   const [customTopic, setCustomTopic] = useState<string>('');
   const [examLevel, setExamLevel] = useState<string>('तह ४ र ५ (Assistant Level)');
@@ -114,8 +115,28 @@ export const AiNotesGenerator: React.FC = () => {
   const [generatedNotes, setGeneratedNotes] = useState<GeneratedNotes | null>(STANDARD_INITIAL_NOTES);
   const [sourceType, setSourceType] = useState<string>('curated');
 
+  const handlePrintPdf = () => {
+    if (!requireAuth(() => handlePrintPdf(), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logDownload({
+        user,
+        fileId: `ai-note-${Date.now()}`,
+        fileName: `${(generatedNotes?.topicTitle || 'Notes').slice(0, 30).replace(/\s+/g, '_')}.pdf`,
+        fileType: 'PDF',
+        resourceCategory: 'AiNotes',
+        fileSize: 'Generated PDF'
+      }).catch(() => {});
+    }
+    window.print();
+  };
+
   const handleGenerate = async (topicToUse?: string) => {
     const topic = topicToUse || (customTopic.trim() || selectedTopic);
+    if (!requireAuth(() => handleGenerate(topicToUse), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
     if (!topic) {
       addToast('कृपया कुनै विषय छनोट गर्नुहोस् वा लेख्नुहोस्', 'warning');
       return;
@@ -335,7 +356,7 @@ ${generatedNotes.examinerTip}
               </button>
 
               <button
-                onClick={() => window.print()}
+                onClick={handlePrintPdf}
                 className="px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 hover:bg-slate-100 transition shadow-sm"
               >
                 <Download className="w-4 h-4 text-slate-500" />

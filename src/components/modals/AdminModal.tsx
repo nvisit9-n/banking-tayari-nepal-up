@@ -43,6 +43,12 @@ import { VideoLecture } from '../../data/videoLectures';
 import { DbService, AdminAnalyticsSummary, SyncConfig, PaymentVerificationRequest } from '../../services/dbService';
 import { AnalyticsService, VisitorAnalyticsStats } from '../../services/analyticsService';
 import { OFFICIAL_ADMIN_EMAIL } from '../../utils/sanitizer';
+import { 
+  ActivityTrackingService, 
+  ActivityLogRecord, 
+  DownloadEventRecord, 
+  ExamScoreRecord 
+} from '../../services/activityTrackingService';
 
 export const AdminModal: React.FC = () => {
   const { isAdminModalOpen, setIsAdminModalOpen, logoutAdmin, purchases, addToast, user } = useApp();
@@ -80,6 +86,12 @@ export const AdminModal: React.FC = () => {
   const [proEmailInput, setProEmailInput] = useState('');
   const [paymentVerifications, setPaymentVerifications] = useState<PaymentVerificationRequest[]>([]);
 
+  // Persistent User Activity & Download Tracking State
+  const [recentActivities, setRecentActivities] = useState<ActivityLogRecord[]>([]);
+  const [recentDownloads, setRecentDownloads] = useState<DownloadEventRecord[]>([]);
+  const [recentExamScores, setRecentExamScores] = useState<ExamScoreRecord[]>([]);
+  const [isLoadingTracking, setIsLoadingTracking] = useState<boolean>(false);
+
   // Load real-time visitor metrics from backend
   const loadVisitorStats = async () => {
     try {
@@ -87,6 +99,24 @@ export const AdminModal: React.FC = () => {
       if (stats) setVisitorStats(stats);
     } catch (e) {
       console.warn('Failed to load visitor stats:', e);
+    }
+  };
+
+  const loadTrackingRecords = async () => {
+    setIsLoadingTracking(true);
+    try {
+      const [acts, dls, scores] = await Promise.all([
+        ActivityTrackingService.getRecentActivities(30),
+        ActivityTrackingService.getRecentDownloads(30),
+        ActivityTrackingService.getRecentExamScores(30)
+      ]);
+      setRecentActivities(acts);
+      setRecentDownloads(dls);
+      setRecentExamScores(scores);
+    } catch (e) {
+      console.warn('Failed to load tracking records:', e);
+    } finally {
+      setIsLoadingTracking(false);
     }
   };
 
@@ -100,6 +130,7 @@ export const AdminModal: React.FC = () => {
     setStudents(DbService.getAllRegisteredStudents());
     setPaymentVerifications(DbService.getPaymentVerifications());
     loadVisitorStats();
+    loadTrackingRecords();
   };
 
   useEffect(() => {
@@ -693,6 +724,116 @@ export const AdminModal: React.FC = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* FIRESTORE / SERVER PERSISTENT ACTIVITY & DOWNLOAD LOGS */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                {/* Section A: Live User Activity Stream */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      <span>प्रयोगकर्ता क्रियाकलाप ट्र्याकिङ ({recentActivities.length})</span>
+                    </h4>
+                    <button
+                      onClick={loadTrackingRecords}
+                      disabled={isLoadingTracking}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isLoadingTracking ? 'animate-spin' : ''}`} />
+                      <span>ताजा गर्नुहोस्</span>
+                    </button>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/40 max-h-64 overflow-y-auto">
+                    {recentActivities.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        अहिलेसम्म कुनै गतिविधि रेकर्ड भएको छैन।
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                        {recentActivities.slice(0, 20).map((act) => (
+                          <div key={act.id} className="p-3 hover:bg-white dark:hover:bg-slate-800 flex items-start justify-between gap-2 transition">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  act.activityType === 'download' 
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300' 
+                                    : act.activityType === 'exam_complete'
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                    : act.activityType === 'exam_start'
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                                }`}>
+                                  {act.activityType === 'download' ? '📥 PDF Download' :
+                                   act.activityType === 'exam_complete' ? '🎯 Exam Finish' :
+                                   act.activityType === 'exam_start' ? '📝 Exam Start' :
+                                   act.activityType === 'reading' ? '📖 Reading' : '👀 Syllabus'}
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-white truncate">
+                                  {act.userName || act.userEmail || 'विद्यार्थी'}
+                                </span>
+                              </div>
+                              <p className="text-slate-600 dark:text-slate-300 truncate">
+                                {act.details || act.targetTitle || act.targetId}
+                              </p>
+                              {act.userEmail && (
+                                <p className="text-[10px] text-slate-400 font-mono">{act.userEmail}</p>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap font-mono shrink-0">
+                              {act.timestamp ? new Date(act.timestamp).toLocaleTimeString('ne-NP') : 'हालै'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section B: Resource & PDF Downloads Log */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <Download className="w-4 h-4 text-red-500" />
+                      <span>डाउनलोड गरिएको PDF अभिलेख ({recentDownloads.length})</span>
+                    </h4>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/40 max-h-64 overflow-y-auto">
+                    {recentDownloads.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        कुनै PDF डाउनलोड रेकर्ड गरिएको छैन।
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                        {recentDownloads.slice(0, 20).map((dl) => (
+                          <div key={dl.id} className="p-3 hover:bg-white dark:hover:bg-slate-800 flex items-start justify-between gap-2 transition">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="px-1.5 py-0.5 rounded bg-red-500 text-white font-mono text-[9px] font-bold">
+                                  {dl.fileType || 'PDF'}
+                                </span>
+                                <span className="font-bold text-slate-900 dark:text-white truncate">
+                                  {dl.fileName}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                डाउनलोडकर्ता: <strong className="text-slate-700 dark:text-slate-200">{dl.userName}</strong> ({dl.userEmail})
+                              </p>
+                              <span className="inline-block text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.2 rounded text-slate-700 dark:text-slate-300">
+                                {dl.resourceCategory || 'General'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap font-mono shrink-0">
+                              {dl.timestamp ? new Date(dl.timestamp).toLocaleTimeString('ne-NP') : 'हालै'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

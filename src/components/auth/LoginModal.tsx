@@ -20,6 +20,7 @@ import { BrandLogo } from '../common/BrandLogo';
 import { safeStorage } from '../../utils/safeHelpers';
 import { StorageService } from '../../services/storageService';
 import { FirebaseAuthService } from '../../services/firebaseAuthService';
+import { ActivityTrackingService } from '../../services/activityTrackingService';
 
 export interface LoginModalProps {
   isOpen?: boolean;
@@ -27,6 +28,7 @@ export interface LoginModalProps {
   setUser?: (user: UserProfile) => void;
   setIsLoggedIn?: (loggedIn: boolean) => void;
   onClose?: () => void;
+  customMessage?: string;
 }
 
 const POPULAR_TARGET_EXAMS = [
@@ -45,7 +47,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onSuccess,
   setUser,
   setIsLoggedIn,
-  onClose
+  onClose,
+  customMessage
 }) => {
   const [activeTab, setActiveTab] = useState<AuthTab>('signin');
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
@@ -126,6 +129,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       window.dispatchEvent(new CustomEvent('btn:profile-updated', { detail: enrichedProfile }));
       window.dispatchEvent(new CustomEvent('btn:user-login', { detail: enrichedProfile }));
+
+      // Log authenticated user login event to Firestore
+      ActivityTrackingService.logActivity({
+        user: enrichedProfile,
+        activityType: 'reading',
+        details: `प्रयोगकर्ता लगइन सम्पन्न (${enrichedProfile.authProvider || 'Google/Email'})`,
+        metadata: { provider: enrichedProfile.authProvider }
+      }).catch(() => {});
 
       showToast(`स्वागत छ, ${enrichedProfile.displayName || enrichedProfile.name}!`, 'success');
       if (onClose) onClose();
@@ -449,14 +460,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             {activeTab === 'forgot' && 'आफ्नो इमेल प्रविष्ट गरी रिसेट लिंक प्राप्त गर्नुहोस्'}
           </p>
 
-          {/* Auth Mode Tabs */}
-          <div className="flex items-center justify-center p-1 bg-slate-200/70 rounded-xl mt-4 gap-1">
+          {/* Auth Mode Tabs with Sleek Red/Blue Indicator */}
+          <div className="flex items-center justify-center p-1 bg-slate-200/80 rounded-xl mt-4 gap-1">
             <button
               type="button"
               onClick={() => { setActiveTab('signin'); setError(''); }}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition ${
                 activeTab === 'signin' 
-                  ? 'bg-white text-blue-600 shadow-2xs' 
+                  ? 'bg-gradient-to-r from-[#0B2046] to-[#DC2626] text-white shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -467,7 +478,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               onClick={() => { setActiveTab('signup'); setError(''); }}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition ${
                 activeTab === 'signup' 
-                  ? 'bg-white text-blue-600 shadow-2xs' 
+                  ? 'bg-gradient-to-r from-[#0B2046] to-[#DC2626] text-white shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -478,7 +489,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               onClick={() => { setActiveTab('forgot'); setError(''); }}
               className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition ${
                 activeTab === 'forgot' 
-                  ? 'bg-white text-blue-600 shadow-2xs' 
+                  ? 'bg-gradient-to-r from-[#0B2046] to-[#DC2626] text-white shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -486,6 +497,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Sleek Red/Blue Interceptor Restriction Notice */}
+        {customMessage && (
+          <div 
+            id="auth-interceptor-callout"
+            className="mx-6 sm:mx-8 mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-red-50 via-white to-blue-50 border-2 border-red-500/40 shadow-xs flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-2 duration-200"
+          >
+            <div className="p-2 bg-gradient-to-br from-red-600 to-[#0B2046] text-white rounded-xl shadow-xs shrink-0 mt-0.5">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-900 text-white">
+                  प्रमाणीकरण आवश्यक (Sign-In Required)
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm font-black text-slate-900 leading-snug">
+                {customMessage}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1 font-medium leading-relaxed">
+                गहिरो अध्ययन सामग्री, डाउनलोड योग्य पीडीएफ तथा ५० वटै नमुना वस्तुगत परीक्षा सेटहरूमा निःशुल्क पहुँच पाउन तुरुन्त लगइन गर्नुहोस्।
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Global Error Banner */}
         {error && (
@@ -586,7 +622,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="submit"
                 disabled={isSigningIn}
-                className="w-full min-h-[46px] py-3 px-5 bg-[#0052FF] hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[46px] py-3 px-5 bg-gradient-to-r from-[#0B2046] via-[#1E3A8A] to-[#DC2626] hover:from-[#06142E] hover:to-[#B91C1C] active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSigningIn ? (
                   <span>साइन-इन हुँदैछ...</span>
@@ -674,7 +710,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="submit"
                 disabled={isSigningIn}
-                className="w-full min-h-[46px] py-3 px-5 bg-[#0052FF] hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[46px] py-3 px-5 bg-gradient-to-r from-[#0B2046] via-[#1E3A8A] to-[#DC2626] hover:from-[#06142E] hover:to-[#B91C1C] active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSigningIn ? (
                   <span>दर्ता गर्दैछ...</span>
@@ -709,7 +745,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="submit"
                 disabled={isSigningIn}
-                className="w-full min-h-[46px] py-3 px-5 bg-[#0052FF] hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[46px] py-3 px-5 bg-gradient-to-r from-[#0B2046] via-[#1E3A8A] to-[#DC2626] hover:from-[#06142E] hover:to-[#B91C1C] active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSigningIn ? (
                   <span>पठाउँदैछ...</span>

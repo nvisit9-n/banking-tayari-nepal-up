@@ -534,3 +534,51 @@ export interface AchievementBadge {
   xpReward?: number;
 }
 
+export interface UserActivityRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  activityType: 'reading' | 'download' | 'exam_start' | 'exam_complete' | 'syllabus_view';
+  details: string;
+  timestamp: string;
+  targetId?: string;
+  targetTitle?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface DownloadEventRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  resourceName: string;
+  fileType: string;
+  fileName?: string;
+  fileId?: string;
+  resourceCategory?: string;
+  fileSize?: string;
+  details?: string;
+  timestamp: string;
+}
+
+export interface ExamScoreRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  quizId: string;
+  quizTitle: string;
+  category: string;
+  mode: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  negativeDeduction: number;
+  accuracy: number;
+  timeElapsedSeconds: number;
+  timestamp: string;
+}
+
+

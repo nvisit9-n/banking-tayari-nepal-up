@@ -17,7 +17,7 @@ import { MOCK_STUDY_NOTES, MOCK_PREMIUM_NOTES, MOCK_NOTIFICATIONS } from '../dat
 import { isUserAdmin, OFFICIAL_ADMIN_EMAIL, MASTER_ADMIN_PIN, sanitizeUserProfile } from '../utils/sanitizer';
 import { fetchOfficialChannelVideos } from '../services/youtubeService';
 import { AnalyticsService } from '../services/analyticsService';
-import { LoginModal } from '../components/auth/LoginModal';
+import { ActivityTrackingService } from '../services/activityTrackingService';
 
 interface AppContextType {
   activeTab: NavigationTab;
@@ -28,8 +28,10 @@ interface AppContextType {
   setUser: (user: UserProfile) => void;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
-  openLoginModal: () => void;
+  loginModalMessage: string;
+  openLoginModal: (customMsg?: string) => void;
   closeLoginModal: () => void;
+  requireAuth: (actionCallback?: () => void, customMsg?: string) => boolean;
   logout: () => void;
   refreshUser: () => void;
   bookmarks: BookmarkItem[];
@@ -186,10 +188,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState<string>('सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।');
   const [activeReaderPage, setActiveReaderPage] = useState(1);
 
-  const openLoginModal = useCallback(() => setIsLoginModalOpen(true), []);
+  const openLoginModal = useCallback((customMsg?: string) => {
+    if (customMsg) {
+      setLoginModalMessage(customMsg);
+    } else {
+      setLoginModalMessage('सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।');
+    }
+    setIsLoginModalOpen(true);
+  }, []);
+
   const closeLoginModal = useCallback(() => setIsLoginModalOpen(false), []);
+
+  const requireAuth = useCallback((actionCallback?: () => void, customMsg?: string): boolean => {
+    const isGuestUser = !user || user.isGuest || !user.email;
+    if (isGuestUser) {
+      const msg = customMsg || 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।';
+      setLoginModalMessage(msg);
+      if (actionCallback) {
+        setPendingCallback(() => actionCallback);
+      }
+      setIsLoginModalOpen(true);
+      addToast(msg, 'warning');
+      return false;
+    }
+    return true;
+  }, [user]);
 
   // Dynamic Notification Real-Time Sync (Official YouTube uploads + Practice Sets)
   useEffect(() => {
@@ -400,14 +426,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
   };
 
   const openNoteReader = (note: StudyNote | string) => {
-    const isGuestUser = !user || user.isGuest || !user.email;
-    if (isGuestUser) {
-      setPendingCallback(() => () => openNoteReader(note));
-      setIsLoginModalOpen(true);
-      addToast('नोट अध्ययन गर्न कृपया पहिले लगइन गर्नुहोस्।', 'info');
+    if (!requireAuth(() => openNoteReader(note), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
       return;
     }
 
+    let foundNote: StudyNote | null = null;
     if (typeof note === 'string') {
       const allNotes = StorageService.getAllNotes();
       const found = allNotes.find(n => n.id === note || 
@@ -419,12 +442,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
         (note === 'note-accounting-basics' && (n.id === 'note-accounting-2-1' || n.id === 'note-accounting-basics')) ||
         (note === 'top-p1-b-01' && (n.id === 'note-accounting-2-1' || n.id === 'note-accounting-basics')));
       if (found) {
+        foundNote = found;
         setActiveNote(found);
         setActiveReaderPage(1);
       }
     } else {
+      foundNote = note;
       setActiveNote(note);
       setActiveReaderPage(1);
+    }
+
+    if (foundNote && user && !user.isGuest) {
+      ActivityTrackingService.logActivity({
+        user,
+        activityType: 'reading',
+        targetId: foundNote.id,
+        targetTitle: foundNote.title,
+        details: `नोट अध्ययन: ${foundNote.title}`,
+        metadata: { category: foundNote.category, subject: foundNote.subject }
+      }).catch(() => {});
     }
   };
 
@@ -433,19 +469,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
   };
 
   const openPremiumDetail = (note: PremiumNote | string) => {
-    const isGuestUser = !user || user.isGuest || !user.email;
-    if (isGuestUser) {
-      setPendingCallback(() => () => openPremiumDetail(note));
-      setIsLoginModalOpen(true);
-      addToast('अध्ययन सामग्री हेर्न कृपया पहिले लगइन गर्नुहोस्।', 'info');
+    if (!requireAuth(() => openPremiumDetail(note), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
       return;
     }
 
+    let foundNote: PremiumNote | null = null;
     if (typeof note === 'string') {
       const found = StorageService.getAllPremiumNotes().find(n => n.id === note);
-      if (found) setActivePremiumNote(found);
+      if (found) {
+        foundNote = found;
+        setActivePremiumNote(found);
+      }
     } else {
+      foundNote = note;
       setActivePremiumNote(note);
+    }
+
+    if (foundNote && user && !user.isGuest) {
+      ActivityTrackingService.logActivity({
+        user,
+        activityType: 'reading',
+        targetId: foundNote.id,
+        targetTitle: foundNote.title,
+        details: `विस्तृत नोट अध्ययन: ${foundNote.title}`,
+        metadata: { category: foundNote.category }
+      }).catch(() => {});
     }
   };
 
@@ -454,9 +502,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
   };
 
   const startQuiz = (quiz: QuizSet) => {
+    if (!requireAuth(() => startQuiz(quiz), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
+
     setQuizResult(null);
     setActiveQuiz(quiz);
     setActiveTab('quiz');
+
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logActivity({
+        user,
+        activityType: 'exam_start',
+        targetId: quiz.id,
+        targetTitle: quiz.title,
+        details: `नमुना वस्तुगत परीक्षा सुरु: ${quiz.title}`,
+        metadata: { totalQuestions: (quiz as any).totalQuestions || quiz.questions?.length || 0 }
+      }).catch(() => {});
+    }
   };
 
   const exitQuiz = () => {
@@ -546,8 +609,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
         setUser,
         isLoginModalOpen,
         setIsLoginModalOpen,
+        loginModalMessage,
         openLoginModal,
         closeLoginModal,
+        requireAuth,
         logout,
         refreshUser,
         bookmarks,
@@ -617,14 +682,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode; initialUser?: Us
           </div>
         ))}
       </div>
-      <LoginModal 
-        isOpen={isLoginModalOpen} 
-        onClose={closeLoginModal} 
-        onSuccess={(newUser) => { 
-          setUser(newUser); 
-          closeLoginModal(); 
-        }} 
-      />
       {children}
     </AppContext.Provider>
   );

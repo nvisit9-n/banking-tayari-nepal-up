@@ -51,6 +51,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
     verifyAdminPin,
     isLoginModalOpen,
     closeLoginModal,
+    loginModalMessage,
     user,
     setUser
   } = useApp();
@@ -156,6 +157,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
           isOpen={isLoginModalOpen}
           onClose={closeLoginModal}
           setUser={setUser}
+          customMessage={loginModalMessage}
         />
       )}
 

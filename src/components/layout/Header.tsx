@@ -355,7 +355,7 @@ export const Header: React.FC = () => {
                 <div className="flex items-center gap-1.5 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={openLoginModal}
+                    onClick={() => openLoginModal()}
                     id="header-login-btn"
                     className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                     title="Google वा इमेलबाट लगइन गर्नुहोस्"

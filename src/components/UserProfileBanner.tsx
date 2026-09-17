@@ -256,7 +256,7 @@ export const UserProfileBanner: React.FC<UserProfileBannerProps> = ({
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={openLoginModal}
+                    onClick={() => openLoginModal()}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md border border-blue-400/40 active:scale-95 transition cursor-pointer"
                   >
                     <User className="w-3.5 h-3.5" />
@@ -316,7 +316,7 @@ export const UserProfileBanner: React.FC<UserProfileBannerProps> = ({
             <button
               type="button"
               id="dashboard-guest-login-btn"
-              onClick={openLoginModal}
+              onClick={() => openLoginModal()}
               className="w-full min-h-[44px] py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
               title="Google वा इमेलबाट लगइन गर्नुहोस्"
             >

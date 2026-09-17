@@ -22,9 +22,10 @@ import { SubjectCategory, StudyNote } from '../../types';
 import { AiNotesGenerator } from './AiNotesGenerator';
 import { OFFICIAL_SYLLABI, OfficialSyllabus } from '../../data/officialSyllabi';
 import { SyllabusModal } from './SyllabusModal';
+import { ActivityTrackingService } from '../../services/activityTrackingService';
 
 export const FreeNotesScreen: React.FC = () => {
-  const { openNoteReader, toggleBookmark, isBookmarked, setActiveTab } = useApp();
+  const { openNoteReader, toggleBookmark, isBookmarked, setActiveTab, requireAuth, user } = useApp();
   const [activeMode, setActiveMode] = useState<'browse' | 'syllabi' | 'ai-generator'>('browse');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +77,22 @@ export const FreeNotesScreen: React.FC = () => {
   });
 
   const handleDownloadSyllabus = (syl: OfficialSyllabus) => {
+    if (!requireAuth(() => handleDownloadSyllabus(syl), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+      return;
+    }
+
+    // Persist authenticated download event to Firestore & Admin tracking
+    if (user && !user.isGuest) {
+      ActivityTrackingService.logDownload({
+        user,
+        fileId: syl.id,
+        fileName: syl.pdfFileName,
+        fileType: 'PDF',
+        resourceCategory: 'Syllabus',
+        fileSize: 'Official PDF'
+      }).catch(() => {});
+    }
+
     const content = `========================================================================
 ${syl.institutionNepali.toUpperCase()}
 ${syl.titleNepali}
@@ -255,7 +272,11 @@ Banking Tayari Nepal Educational Portal
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => setSelectedSyllabus(syl)}
+                    onClick={() => {
+                      if (requireAuth(() => setSelectedSyllabus(syl), 'सामग्री पढ्न, पीडीएफ डाउनलोड गर्न र परीक्षा दिन लगइन गर्नुहोस्।')) {
+                        setSelectedSyllabus(syl);
+                      }
+                    }}
                     className="flex-1 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#0B2046] hover:text-white dark:hover:bg-[#0B2046] text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5"
                   >
                     <Eye className="w-3.5 h-3.5 text-[#C8102E]" />
